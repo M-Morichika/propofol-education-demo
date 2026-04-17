@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>プロポフォール麻酔深度シミュレータ（教育用）</title>
+  <style>
+    :root {
+      --bg: #f5f7fa;
+      --panel: #ffffff;
+      --line: #d8dee6;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --accent: #2563eb;
+      --accent-soft: #dbeafe;
+      --induction: #2563eb;
+      --emergence: #d97706;
+      --reference: #9ca3af;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      padding: 24px;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Segoe UI", "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+      display: flex;
+      justify-content: center;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 920px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      box-shadow: 0 10px 28px rgba(15, 23, 42, 0.08);
+      padding: 24px;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: 1.5rem;
+      font-weight: 700;
+      text-align: center;
+    }
+
+    .subtitle {
+      margin: 0 0 20px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.95rem;
+      line-height: 1.6;
+    }
+
+    .section {
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 16px;
+      background: #fff;
+    }
+
+    .section + .section {
+      margin-top: 16px;
+    }
+
+    .preset-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .preset-btn {
+      appearance: none;
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--text);
+      border-radius: 10px;
+      padding: 11px 12px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+    }
+
+    .preset-btn:hover {
+      border-color: #b7c2cf;
+    }
+
+    .preset-btn.is-active {
+      background: var(--accent-soft);
+      border-color: var(--accent);
+      color: #1d4ed8;
+    }
+
+    .controls-grid {
+      display: grid;
+      grid-template-columns: 1.5fr 1fr 1fr;
+      gap: 14px;
+      align-items: end;
+    }
+
+    .control {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .control label {
+      font-size: 0.9rem;
+      font-weight: 600;
+    }
+
+    .age-wrap {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px;
+      align-items: center;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      margin: 0;
+      accent-color: var(--accent);
+      cursor: pointer;
+    }
+
+    .age-value {
+      min-width: 52px;
+      text-align: right;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+    }
+
+    select {
+      width: 100%;
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--text);
+      font-size: 0.95rem;
+    }
+
+    canvas {
+      width: 100%;
+      height: auto;
+      display: block;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: #fff;
+    }
+
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 18px;
+      margin: 12px 0 4px;
+      font-size: 0.88rem;
+      color: var(--text);
+    }
+
+    .legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      white-space: nowrap;
+    }
+
+    .dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 999px;
+      display: inline-block;
+    }
+
+    .dash {
+      width: 26px;
+      height: 0;
+      border-top: 2px dashed var(--reference);
+      display: inline-block;
+      transform: translateY(-1px);
+    }
+
+    .metrics {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      align-items: stretch;
+    }
+
+    .metric-card {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 14px 16px;
+      background: #fff;
+    }
+
+    .metric-label {
+      font-size: 0.88rem;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+
+    .metric-value {
+      font-size: 1.3rem;
+      font-weight: 700;
+      letter-spacing: 0.01em;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .note {
+      margin-top: 12px;
+      color: var(--muted);
+      font-size: 0.84rem;
+      line-height: 1.6;
+    }
+
+    @media (max-width: 760px) {
+      body { padding: 12px; }
+      .container { padding: 16px; border-radius: 12px; }
+      .controls-grid { grid-template-columns: 1fr; }
+      .metrics { grid-template-columns: 1fr; }
+      .preset-row { grid-template-columns: 1fr; }
+      .metric-value { font-size: 1.15rem; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>プロポフォール麻酔深度シミュレータ（教育用）</h1>
+    <p class="subtitle">
+      年齢による感受性の変化と、導入・覚醒で異なる Ce–BIS 関係を視覚的に理解するための教育用シミュレータです。
+    </p>
+
+    <div class="section">
+      <div class="preset-row">
+        <button class="preset-btn" id="youngPreset" type="button">若年例</button>
+        <button class="preset-btn is-active" id="standardPreset" type="button">標準例</button>
+        <button class="preset-btn" id="elderlyPreset" type="button">高齢例</button>
+      </div>
+
+      <div class="controls-grid">
+        <div class="control">
+          <label for="ageSlider">年齢</label>
+          <div class="age-wrap">
+            <input type="range" id="ageSlider" min="20" max="90" value="55" step="1" />
+            <div class="age-value"><span id="ageValue">55</span> 歳</div>
+          </div>
+        </div>
+
+        <div class="control">
+          <label for="sexSelect">性別</label>
+          <select id="sexSelect">
+            <option value="M" selected>男性</option>
+            <option value="F">女性</option>
+          </select>
+        </div>
+
+        <div class="control">
+          <label for="bmiSelect">BMI</label>
+          <select id="bmiSelect">
+            <option value="UW">痩せ</option>
+            <option value="Norm" selected>標準</option>
+            <option value="OW">肥満</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <canvas id="loopCanvas" width="860" height="430" aria-label="Ce-BIS relationship graph"></canvas>
+      <div class="legend">
+        <div class="legend-item"><span class="dot" style="background: var(--induction);"></span>導入</div>
+        <div class="legend-item"><span class="dot" style="background: var(--emergence);"></span>覚醒</div>
+        <div class="legend-item"><span class="dash"></span>参照曲線</div>
+      </div>
+    </div>
+
+    <div class="metrics">
+      <div class="metric-card">
+        <div class="metric-label">EC50</div>
+        <div class="metric-value" id="ec50Value">--</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Ce=0 時の見かけの BIS</div>
+        <div class="metric-value" id="residualValue">--</div>
+      </div>
+    </div>
+
+    <div class="note">
+      ※導入開始時の BIS は一定値として設定されています。<br />
+      ※本ツールは教育用の簡略モデルであり、臨床判断には使用できません。
+    </div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('loopCanvas');
+    const ctx = canvas.getContext('2d');
+
+    const elements = {
+      age: document.getElementById('ageSlider'),
+      sex: document.getElementById('sexSelect'),
+      bmi: document.getElementById('bmiSelect'),
+      ageValue: document.getElementById('ageValue'),
+      ec50Value: document.getElementById('ec50Value'),
+      residualValue: document.getElementById('residualValue'),
+      youngPreset: document.getElementById('youngPreset'),
+      standardPreset: document.getElementById('standardPreset'),
+      elderlyPreset: document.getElementById('elderlyPreset')
+    };
+
+    const PRESETS = {
+      young: { age: 25 },
+      standard: { age: 55 },
+      elderly: { age: 80 }
+    };
+
+    const params = {
+      ec50Intercept: 3.0,
+      gamma: 3.5,
+      alphaIn: 0.18,
+      dt: 0.2,
+      maxCe: 4.0,
+      steps: 1200,
+      bisMin: 40,
+      bisMax: 98,
+      referenceNii: 1.0
+    };
+
+    let selectedPreset = 'standard';
+
+    function getNii(sex, bmi) {
+      let nii = 4.6;
+      if (sex === 'F') nii *= 1.22;
+      if (bmi === 'OW') nii *= 1.15;
+      return nii;
+    }
+
+    function calcPiEq(ce, ec50) {
+      return Math.pow(ec50, params.gamma) /
+        (Math.pow(ce, params.gamma) + Math.pow(ec50, params.gamma));
+    }
+
+    function bisFromPi(pi) {
+      return params.bisMin + pi * (params.bisMax - params.bisMin);
+    }
+
+    function buildCeTarget() {
+      const arr = [];
+      const riseStep = params.maxCe / (params.steps / 4);
+      for (let ce = 0; ce <= params.maxCe + 1e-9; ce += riseStep) arr.push(Math.min(ce, params.maxCe));
+      for (let ce = params.maxCe; ce >= -1e-9; ce -= riseStep) arr.push(Math.max(ce, 0));
+      for (let i = 0; i < params.steps / 2; i++) arr.push(0);
+      return arr;
+    }
+
+    const ceTarget = buildCeTarget();
+
+    function calculateLoop() {
+      const age = parseInt(elements.age.value, 10);
+      const sex = elements.sex.value;
+      const bmi = elements.bmi.value;
+
+      const ec50 = params.ec50Intercept - 0.0067 * age;
+      const nii = getNii(sex, bmi);
+      const alphaOut = params.alphaIn / nii;
+      const alphaOutRef = params.alphaIn / params.referenceNii;
+
+      let pi = 1.0;
+      let piRef = 1.0;
+      let dataPoints = [];
+      let refPoints = [];
+      let residualBis = null;
+      let afterPeakCeZero = false;
+
+      for (let i = 0; i < ceTarget.length; i++) {
+        const ce = ceTarget[i];
+        const piEq = calcPiEq(ce, ec50);
+
+        const alpha = (pi > piEq) ? params.alphaIn : alphaOut;
+        const alphaRef = (piRef > piEq) ? params.alphaIn : alphaOutRef;
+
+        pi += alpha * (piEq - pi) * params.dt;
+        piRef += alphaRef * (piEq - piRef) * params.dt;
+
+        const bis = bisFromPi(pi);
+        const bisRef = bisFromPi(piRef);
+        const isEmergence = (pi < piEq - 0.005);
+
+        dataPoints.push({ x: ce, y: bis, isEmergence });
+        refPoints.push({ x: ce, y: bisRef });
+
+        if (ce === 0 && i > (params.steps / 2) && !afterPeakCeZero) {
+          residualBis = bis;
+          afterPeakCeZero = true;
+        }
+      }
+
+      return { age, sex, bmi, ec50, residualBis, dataPoints, refPoints };
+    }
+
+    function drawAxes(p, w, h) {
+      ctx.strokeStyle = '#e9edf2';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      for (let i = 0; i <= 4; i++) {
+        const x = p + (i / 4) * w;
+        ctx.moveTo(x, p);
+        ctx.lineTo(x, p + h);
+      }
+      for (let i = 0; i <= 10; i++) {
+        const y = p + (i / 10) * h;
+        ctx.moveTo(p, y);
+        ctx.lineTo(p + w, y);
+      }
+      ctx.stroke();
+
+      ctx.fillStyle = '#374151';
+      ctx.font = '600 13px Segoe UI';
+      ctx.textAlign = 'center';
+      ctx.fillText('Propofol Ce (μg/mL)', p + w / 2, p + h + 42);
+      ctx.save();
+      ctx.translate(p - 44, p + h / 2);
+      ctx.rotate(-Math.PI / 2);
+      ctx.fillText('Estimated BIS', 0, 0);
+      ctx.restore();
+
+      ctx.fillStyle = '#6b7280';
+      ctx.font = '12px Segoe UI';
+      for (let i = 0; i <= 4; i++) {
+        ctx.fillText(String(i), p + (i / 4) * w, p + h + 18);
+      }
+      for (let i = 0; i <= 10; i++) {
+        ctx.fillText(String(100 - i * 10), p - 22, p + (i / 10) * h + 4);
+      }
+    }
+
+    function draw(result) {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      const p = 62;
+      const w = canvas.width - p * 1.55;
+      const h = canvas.height - p * 1.5;
+
+      drawAxes(p, w, h);
+
+      ctx.setLineDash([5, 5]);
+      ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--reference').trim();
+      ctx.lineWidth = 1.6;
+      ctx.beginPath();
+      ctx.moveTo(
+        p + (result.refPoints[0].x / 4.5) * w,
+        p + (1 - (result.refPoints[0].y - params.bisMin) / (params.bisMax - params.bisMin)) * h
+      );
+      result.refPoints.forEach(pt => {
+        ctx.lineTo(
+          p + (pt.x / 4.5) * w,
+          p + (1 - (pt.y - params.bisMin) / (params.bisMax - params.bisMin)) * h
+        );
+      });
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      for (let i = 1; i < result.dataPoints.length; i++) {
+        const p1 = result.dataPoints[i - 1];
+        const p2 = result.dataPoints[i];
+        ctx.strokeStyle = p2.isEmergence
+          ? getComputedStyle(document.documentElement).getPropertyValue('--emergence').trim()
+          : getComputedStyle(document.documentElement).getPropertyValue('--induction').trim();
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(
+          p + (p1.x / 4.5) * w,
+          p + (1 - (p1.y - params.bisMin) / (params.bisMax - params.bisMin)) * h
+        );
+        ctx.lineTo(
+          p + (p2.x / 4.5) * w,
+          p + (1 - (p2.y - params.bisMin) / (params.bisMax - params.bisMin)) * h
+        );
+        ctx.stroke();
+      }
+    }
+
+    function updatePresetButtons() {
+      elements.youngPreset.classList.toggle('is-active', selectedPreset === 'young');
+      elements.standardPreset.classList.toggle('is-active', selectedPreset === 'standard');
+      elements.elderlyPreset.classList.toggle('is-active', selectedPreset === 'elderly');
+    }
+
+    function syncPresetStateFromAge() {
+      const age = parseInt(elements.age.value, 10);
+      if (age === PRESETS.young.age) {
+        selectedPreset = 'young';
+      } else if (age === PRESETS.standard.age) {
+        selectedPreset = 'standard';
+      } else if (age === PRESETS.elderly.age) {
+        selectedPreset = 'elderly';
+      } else {
+        selectedPreset = null;
+      }
+    }
+
+    function updateAll() {
+      syncPresetStateFromAge();
+      updatePresetButtons();
+
+      const result = calculateLoop();
+      draw(result);
+
+      elements.ageValue.textContent = result.age;
+      elements.ec50Value.textContent = `${result.ec50.toFixed(2)} μg/mL`;
+      elements.residualValue.textContent = `${result.residualBis.toFixed(1)}（@${result.age}歳）`;
+    }
+
+    function applyPreset(key) {
+      selectedPreset = key;
+      elements.age.value = PRESETS[key].age;
+      updateAll();
+    }
+
+    elements.youngPreset.addEventListener('click', () => applyPreset('young'));
+    elements.standardPreset.addEventListener('click', () => applyPreset('standard'));
+    elements.elderlyPreset.addEventListener('click', () => applyPreset('elderly'));
+
+    elements.age.addEventListener('input', updateAll);
+    elements.sex.addEventListener('change', updateAll);
+    elements.bmi.addEventListener('change', updateAll);
+
+    updateAll();
+  </script>
+</body>
+</html>
